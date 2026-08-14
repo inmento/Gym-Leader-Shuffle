@@ -1,0 +1,13 @@
+{
+  "id": "gym_leader_shuffle",
+  "name": "Gym Leader Shuffle",
+  "version": "0.0.1",
+  "entry": "main.lua",
+  "api": 2,
+  "category": "GAMEPLAY",
+  "profile": "content",
+  "games": ["gen1"],
+  "affects_link": false,
+  "permissions": ["engine_internals"],
+  "description": "Shuffles Kanto gym leaders with a spoiler log, scaled teams, optional trainer-gym roster shuffling, and testing tools."
+}
