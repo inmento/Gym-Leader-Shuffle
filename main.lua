@@ -1,5 +1,5 @@
 -- Gym Leader Shuffle
--- Release: 0.0.1
+-- Release: 0.0.2
 -- Gen 1 Recomp mod API 2
 --
 -- This mod assigns one of the eight Kanto gym leaders to each gym when a new

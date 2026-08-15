@@ -1,5 +1,7 @@
 # Gym Leader Shuffle
 
+> **AI assisted; not AI created.**
+
 Gym Leader Shuffle creates a persistent per-save derangement of the eight Kanto Gym Leaders. The visiting leader supplies the overworld sprite, trainer portrait, intro dialogue, and scaled battle team. The physical gym continues to own every badge, TM, reward line, progression flag, and post-battle dialogue.
 
 | Example | Result |
@@ -9,7 +11,7 @@ Gym Leader Shuffle creates a persistent per-save derangement of the eight Kanto 
 
 ## Install
 
-Import `gym_leader_shuffle-0.0.1.zip` through Gen 1 Recomp’s **Import mod .zip** action. Alternatively, extract its files so the layout is exactly:
+Import `gym_leader_shuffle-0.0.2.zip` through Gen 1 Recomp’s **Import mod .zip** action. Alternatively, extract its files so the layout is exactly:
 
 ```text
 mods/
