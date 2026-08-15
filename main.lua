@@ -6,9 +6,14 @@
 -- save is created. The physical gym still awards its normal badge/TM; the
 -- visiting leader supplies the battle portrait, overworld sprite, and party.
 
-local SpriteRenderer = require("src.render.SpriteRenderer")
-
 return function(mod)
+  -- Gold publishes its extracted map/script tables at these live data paths.
+  -- This capability check avoids version-string allow-lists and leaves Red,
+  -- Blue, and Yellow on their existing behavior.
+  local function isGen2(game)
+    game = game or mod.game
+    return game and game.data and game.data.gen2Maps ~= nil
+  end
   mod.options:define({
     {
       key = "randomize_gyms",
@@ -26,6 +31,12 @@ return function(mod)
       key = "randomize_gym_trainers",
       type = "toggle",
       label = "SHUFFLE GYM TRAINERS",
+      default = false,
+    },
+    {
+      key = "randomize_held_items",
+      type = "toggle",
+      label = "RANDOMIZE GYM HELD ITEMS (GOLD)",
       default = false,
     },
     {
@@ -70,7 +81,7 @@ return function(mod)
   -- vanilla party used to establish that gym's target level curve. Giovanni
   -- is party 3 in Viridian Gym; his Rocket Hideout and Silph Co. parties are
   -- never included in the shuffle.
-  local GYMS = {
+  local GEN1_GYMS = {
     {
       id = "OPP_BROCK",
       mapId = "PEWTER_GYM",
@@ -153,6 +164,30 @@ return function(mod)
     },
   }
 
+  -- Gold's sixteen physical gym slots. These map/object/sprite IDs were read
+  -- from the supplied Gold extraction. Blaine correctly uses SEAFOAM_GYM in
+  -- Gold because Cinnabar Gym is destroyed in that game.
+  local GEN2_GYMS = {
+    { id = "FALKNER", mapId = "VIOLET_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_FALKNER", gymType = "FLYING" },
+    { id = "BUGSY", mapId = "AZALEA_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_BUGSY", gymType = "BUG" },
+    { id = "WHITNEY", mapId = "GOLDENROD_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_WHITNEY", gymType = "NORMAL" },
+    { id = "MORTY", mapId = "ECRUTEAK_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_MORTY", gymType = "GHOST" },
+    { id = "CHUCK", mapId = "CIANWOOD_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_CHUCK", gymType = "FIGHTING" },
+    { id = "JASMINE", mapId = "OLIVINE_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_JASMINE", gymType = "STEEL" },
+    { id = "PRYCE", mapId = "MAHOGANY_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_PRYCE", gymType = "ICE" },
+    { id = "CLAIR", mapId = "BLACKTHORN_GYM_1F", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_CLAIR", gymType = "DRAGON" },
+    { id = "BROCK", mapId = "PEWTER_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_BROCK", gymType = "ROCK" },
+    { id = "MISTY", mapId = "CERULEAN_GYM", objectIndex = 2, partyIndex = 1, sprite = "SPRITE_MISTY", gymType = "WATER" },
+    { id = "LT_SURGE", mapId = "VERMILION_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_SURGE", gymType = "ELECTRIC" },
+    { id = "ERIKA", mapId = "CELADON_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_ERIKA", gymType = "GRASS" },
+    { id = "JANINE", mapId = "FUCHSIA_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_JANINE", gymType = "POISON" },
+    { id = "SABRINA", mapId = "SAFFRON_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_SABRINA", gymType = "PSYCHIC" },
+    { id = "BLAINE", mapId = "SEAFOAM_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_BLAINE", gymType = "FIRE" },
+    { id = "BLUE", mapId = "VIRIDIAN_GYM", objectIndex = 1, partyIndex = 1, sprite = "SPRITE_BLUE", gymType = "VARIED" },
+  }
+
+  local GYMS = isGen2() and GEN2_GYMS or GEN1_GYMS
+
   local GYM_BY_MAP = {}
   local GYM_BY_ID = {}
   for _, gym in ipairs(GYMS) do
@@ -200,20 +235,89 @@ return function(mod)
   local LIVE_GYM_NPCS = {}
   local LIVE_GYM_TRAINERS = {}
 
+  -- Gold item records identify legitimate held effects directly. Restrict the
+  -- optional held-item shuffle to tossable, non-key records with a real held
+  -- effect; this never places a key item or invents an item for a party row
+  -- that did not already carry one.
+  local GOLD_HELD_ITEMS = {}
+  if isGen2() and mod.content.items and mod.content.items.each then
+    for itemId, item in mod.content.items:each() do
+      if item and item.heldEffect and item.heldEffect ~= "HELD_NONE"
+        and item.canToss ~= false and item.keyItem ~= true
+        and item.pocket ~= "KEY_ITEM" then
+        GOLD_HELD_ITEMS[#GOLD_HELD_ITEMS + 1] = itemId
+      end
+    end
+    table.sort(GOLD_HELD_ITEMS)
+  end
+
+  local function gymHeldItem(itemId)
+    if not (isGen2() and itemId and mod.options:get("randomize_held_items")
+      and #GOLD_HELD_ITEMS > 0) then
+      return itemId
+    end
+    return GOLD_HELD_ITEMS[love.math.random(#GOLD_HELD_ITEMS)]
+  end
+
+  -- Gen 2 party rows can carry `moves` and a held `item`. Preserve every
+  -- data field when cloning so a shuffle never strips Gold-only battle data.
   local function copyParty(party)
     local out = {}
     for i, mon in ipairs(party or {}) do
-      out[i] = {
-        species = mon.species,
-        level = mon.level,
-      }
+      local copy = {}
+      for key, value in pairs(mon) do
+        if type(value) == "table" then
+          local nested = {}
+          for nestedKey, nestedValue in pairs(value) do nested[nestedKey] = nestedValue end
+          copy[key] = nested
+        else
+          copy[key] = value
+        end
+      end
+      out[i] = copy
     end
     return out
   end
 
+  local TRAINER_ID_BY_INDEX = {}
+  if mod.content.trainers.each then
+    for trainerId, trainer in mod.content.trainers:each() do
+      if trainer and trainer.index ~= nil then TRAINER_ID_BY_INDEX[trainer.index] = trainerId end
+    end
+  end
+
+  local function trainerParty(trainer, member)
+    if not trainer then return nil end
+    if trainer.parties then return trainer.parties[member] end
+    for _, record in ipairs(trainer.trainers or {}) do
+      if record.index == member or record.id == member then return record.party end
+    end
+    return nil
+  end
+
+  local function trainerIdForObject(object)
+    if object.trainerClass then return object.trainerClass, object.trainerParty end
+    local record = object.trainer
+    if record then return TRAINER_ID_BY_INDEX[record.class], record.member end
+    return nil, nil
+  end
+
+  local function trainerMemberId(trainerId, member)
+    local trainer = trainerId and mod.content.trainers:get(trainerId)
+    for _, record in ipairs(trainer and trainer.trainers or {}) do
+      if record.index == member or record.id == member then return record.id or record.index end
+    end
+    return member
+  end
+
+  local function trainerIndex(trainerId)
+    local trainer = trainerId and mod.content.trainers:get(trainerId)
+    return trainer and trainer.index or trainerId
+  end
+
   for _, gym in ipairs(GYMS) do
     local trainer = mod.content.trainers:get(gym.id)
-    local party = trainer and trainer.parties and trainer.parties[gym.partyIndex]
+    local party = trainerParty(trainer, gym.partyIndex)
     if party then
       VANILLA_PARTIES[gym.id] = copyParty(party)
     else
@@ -224,18 +328,21 @@ return function(mod)
     local map = mod.content.maps:get(gym.mapId)
     for arrayIndex, object in ipairs(map and map.objects or {}) do
       local objectIndex = object.index or arrayIndex
-      if objectIndex ~= gym.objectIndex and object.trainerClass then
-        local sourceTrainer = mod.content.trainers:get(object.trainerClass)
-        local sourceParty = sourceTrainer and sourceTrainer.parties
-          and sourceTrainer.parties[object.trainerParty]
+      local trainerClass, trainerMember = trainerIdForObject(object)
+      if objectIndex ~= gym.objectIndex and trainerClass then
+        local sourceTrainer = mod.content.trainers:get(trainerClass)
+        local sourceParty = trainerParty(sourceTrainer, trainerMember)
         if sourceParty then
           local record = {
             key = gym.id .. ":" .. tostring(objectIndex),
             gymId = gym.id,
             mapId = gym.mapId,
             objectIndex = objectIndex,
-            trainerClass = object.trainerClass,
-            trainerParty = object.trainerParty,
+            trainerClass = trainerClass,
+            -- Gold object records use a numeric member; Gold battle hooks use
+            -- the roster record ID. Keep both forms instead of conflating them.
+            trainerMember = trainerMember,
+            trainerParty = isGen2() and trainerMemberId(trainerClass, trainerMember) or trainerMember,
             sprite = object.sprite,
             vanillaParty = copyParty(sourceParty),
           }
@@ -425,6 +532,8 @@ return function(mod)
         local entry = {
           species = species,
           level = targetMon.level,
+          moves = sourceMon.moves,
+          item = gymHeldItem(sourceMon.item),
         }
         local moves = randomizedMoves(species, targetMon.level, destinationGym.gymType)
         if moves and #moves > 0 then entry.moves = moves end
@@ -445,7 +554,12 @@ return function(mod)
       local targetMon = target[i]
       if sourceMon and targetMon then
         local species = fitSpeciesToLevel(sourceMon.species, targetMon.level)
-        local entry = { species = species, level = targetMon.level }
+        local entry = {
+          species = species,
+          level = targetMon.level,
+          moves = sourceMon.moves,
+          item = gymHeldItem(sourceMon.item),
+        }
         local moves = randomizedMoves(species, targetMon.level, destinationGym.gymType)
         if moves and #moves > 0 then entry.moves = moves end
         out[#out + 1] = entry
@@ -526,12 +640,22 @@ return function(mod)
     OPP_BROCK = "BROCK", OPP_MISTY = "MISTY", OPP_LT_SURGE = "LT. SURGE",
     OPP_ERIKA = "ERIKA", OPP_KOGA = "KOGA", OPP_SABRINA = "SABRINA",
     OPP_BLAINE = "BLAINE", OPP_GIOVANNI = "GIOVANNI",
+    FALKNER = "FALKNER", BUGSY = "BUGSY", WHITNEY = "WHITNEY", MORTY = "MORTY",
+    CHUCK = "CHUCK", JASMINE = "JASMINE", PRYCE = "PRYCE", CLAIR = "CLAIR",
+    BROCK = "BROCK", MISTY = "MISTY", LT_SURGE = "LT. SURGE", ERIKA = "ERIKA",
+    JANINE = "JANINE", SABRINA = "SABRINA", BLAINE = "BLAINE", BLUE = "BLUE",
   }
   local BADGE_NAMES = {
     OPP_BROCK = "BOULDER BADGE", OPP_MISTY = "CASCADE BADGE",
     OPP_LT_SURGE = "THUNDER BADGE", OPP_ERIKA = "RAINBOW BADGE",
     OPP_KOGA = "SOUL BADGE", OPP_SABRINA = "MARSH BADGE",
     OPP_BLAINE = "VOLCANO BADGE", OPP_GIOVANNI = "EARTH BADGE",
+    FALKNER = "ZEPHYR BADGE", BUGSY = "HIVE BADGE", WHITNEY = "PLAIN BADGE",
+    MORTY = "FOG BADGE", CHUCK = "STORM BADGE", JASMINE = "MINERAL BADGE",
+    PRYCE = "GLACIER BADGE", CLAIR = "RISING BADGE", BROCK = "BOULDER BADGE",
+    MISTY = "CASCADE BADGE", LT_SURGE = "THUNDER BADGE", ERIKA = "RAINBOW BADGE",
+    JANINE = "SOUL BADGE", SABRINA = "MARSH BADGE", BLAINE = "VOLCANO BADGE",
+    BLUE = "EARTH BADGE",
   }
 
   local function openSpoilerLog()
@@ -548,7 +672,7 @@ return function(mod)
     local pages = {}
     for i, gym in ipairs(GYMS) do
       local assignedId = mapping[gym.id] or gym.id
-      pages[#pages + 1] = string.format("%d/8 %s", i,
+      pages[#pages + 1] = string.format("%d/%d %s", i, #GYMS,
         LEADER_NAMES[assignedId] or assignedId)
         .. "\n" .. (BADGE_NAMES[gym.id] or gym.id)
     end
@@ -745,17 +869,19 @@ return function(mod)
     end
   end
 
-  for _, gym in ipairs(GYMS) do
-    local sourceLabel, sourceText = sourceLeaderText(gym)
-    if sourceLabel and sourceText then
-      mod.content.map_scripts:register(gym.mapId, {
-        priority = 100,
-        talk = {
-          [sourceText] = shuffledLeaderTalk(gym),
-        },
-      })
-    else
-      mod.log:error("Could not register dialogue override for %s", gym.id)
+  if not isGen2() then
+    for _, gym in ipairs(GYMS) do
+      local sourceLabel, sourceText = sourceLeaderText(gym)
+      if sourceLabel and sourceText then
+        mod.content.map_scripts:register(gym.mapId, {
+          priority = 100,
+          talk = {
+            [sourceText] = shuffledLeaderTalk(gym),
+          },
+        })
+      else
+        mod.log:error("Could not register dialogue override for %s", gym.id)
+      end
     end
   end
 
@@ -767,15 +893,32 @@ return function(mod)
     end
 
     npc.def.sprite = spriteId
+    -- Gold NPCs expose a supported live setter that refreshes their palette and
+    -- renderer. Gen 1 keeps the existing lightweight renderer fallback.
+    if type(npc.setSpriteDef) == "function" then
+      local ok = npc:setSpriteDef(spriteDef)
+      if ok ~= false then return true end
+    end
+    local SpriteRenderer = require("src.render.SpriteRenderer")
     npc.sprite = SpriteRenderer.new(spriteDef, npc.id)
     return true
   end
 
+  local function setNpcTrainerIdentity(npc, trainerId, member)
+    if not (npc and npc.def) then return end
+    if npc.def.trainer then
+      -- Gold map trainer records store numeric class IDs and a roster member.
+      npc.def.trainer.class = trainerIndex(trainerId)
+      npc.def.trainer.member = member
+    else
+      npc.def.trainerClass = trainerId
+      npc.def.trainerParty = member
+    end
+  end
+
   local function restorePhysicalGymTrainer(record)
-    local npc = record.npc
     local trainer = record.destinationTrainer
-    npc.def.trainerClass = trainer.trainerClass
-    npc.def.trainerParty = trainer.trainerParty
+    setNpcTrainerIdentity(record.npc, trainer.trainerClass, trainer.trainerMember or trainer.trainerParty)
     -- Keep the shuffled trainer's sprite visible in the gym. Only class and
     -- party identity return to the physical record after battle setup.
   end
@@ -789,8 +932,7 @@ return function(mod)
         local sourceKey = assignments and assignments[destinationTrainer.key]
         local sourceTrainer = sourceKey and GYM_TRAINER_BY_KEY[sourceKey]
         if sourceTrainer then
-          npc.def.trainerClass = sourceTrainer.trainerClass
-          npc.def.trainerParty = sourceTrainer.trainerParty
+          setNpcTrainerIdentity(npc, sourceTrainer.trainerClass, sourceTrainer.trainerMember or sourceTrainer.trainerParty)
           setNpcSprite(npc, sourceTrainer.sprite)
           LIVE_GYM_TRAINERS[npc.id] = {
             npc = npc,
@@ -799,8 +941,7 @@ return function(mod)
             sourceTrainer = sourceTrainer,
           }
         else
-          npc.def.trainerClass = destinationTrainer.trainerClass
-          npc.def.trainerParty = destinationTrainer.trainerParty
+          setNpcTrainerIdentity(npc, destinationTrainer.trainerClass, destinationTrainer.trainerMember or destinationTrainer.trainerParty)
           setNpcSprite(npc, destinationTrainer.sprite)
           LIVE_GYM_TRAINERS[npc.id] = nil
         end
@@ -809,10 +950,10 @@ return function(mod)
   end
 
   local function restorePhysicalGymIdentity(record)
-    local npc = record.npc
-    local gym = record.gym
-    npc.def.trainerClass = gym.id
-    npc.def.trainerParty = gym.partyIndex
+    -- Gen 1 leaders are map trainer objects and must be restored so the
+    -- physical building owns the reward. Gold leaders load their trainer from
+    -- their native script, so there is no object trainer identity to restore.
+    if not isGen2() then setNpcTrainerIdentity(record.npc, record.gym.id, record.gym.partyIndex) end
   end
 
   local function applyGymToActiveMap(mapId)
@@ -831,16 +972,17 @@ return function(mod)
     local assignedGym = assignedLeaderId and GYM_BY_ID[assignedLeaderId]
 
     if not assignedGym then
-      npc.def.trainerClass = gym.id
-      npc.def.trainerParty = gym.partyIndex
+      if not isGen2() then setNpcTrainerIdentity(npc, gym.id, gym.partyIndex) end
       setNpcSprite(npc, leaderSpriteForGame(gym))
       LIVE_GYM_NPCS[npc.id] = nil
       applyGymTrainersToActiveMap(gym, nil)
       return
     end
 
-    npc.def.trainerClass = assignedGym.id
-    npc.def.trainerParty = assignedGym.partyIndex
+    -- Gold leader scripts own their own loadtrainer command, so their visible
+    -- NPC needs only the visiting sprite here; the class/member rewrite occurs
+    -- at the script-command seam immediately before battle construction.
+    if not isGen2() then setNpcTrainerIdentity(npc, assignedGym.id, assignedGym.partyIndex) end
     setNpcSprite(npc, leaderSpriteForGame(assignedGym))
     LIVE_GYM_NPCS[npc.id] = {
       npc = npc,
@@ -875,9 +1017,12 @@ return function(mod)
     party = next(trainerClass, partyIndex, party)
 
     local pending = pendingGymBattle
+    local expectedMember = pending and (isGen2()
+      and trainerMemberId(pending.assignedLeaderId, pending.assignedPartyIndex)
+      or pending.assignedPartyIndex)
     if pending
       and trainerClass == pending.assignedLeaderId
-      and partyIndex == pending.assignedPartyIndex then
+      and partyIndex == expectedMember then
       local replacement = scaledParty(pending.assignedLeaderId, pending.gym)
       if #replacement == 0 then
         mod.log:warn("Could not scale party for %s", pending.gym.id)
@@ -899,6 +1044,34 @@ return function(mod)
     return party
   end)
 
+  -- Gold gym leaders are scripted object interactions rather than map trainer
+  -- objects. Rewrite only their decoded `loadtrainer` row immediately before
+  -- the VM resolves the roster. Native text, badges, TMs, and defeat flags stay
+  -- attached to the physical gym script.
+  mod.hooks:wrap("script.command", function(next, ctx, name, args, cmd)
+    if isGen2() and name == "loadtrainer" and type(ctx) == "table" then
+      local physicalGym = GYM_BY_MAP[ctx.mapId]
+      if physicalGym and ctx.object == physicalGym.objectIndex then
+        local mapping = mappingForSave()
+        local assignedId = mapping and mapping[physicalGym.id]
+        local assignedGym = assignedId and GYM_BY_ID[assignedId]
+        if assignedGym then
+          local replacement = {}
+          for key, value in pairs(cmd or {}) do replacement[key] = value end
+          replacement.class = trainerIndex(assignedGym.id)
+          replacement.member = assignedGym.partyIndex
+          pendingGymBattle = {
+            gym = physicalGym,
+            assignedLeaderId = assignedGym.id,
+            assignedPartyIndex = assignedGym.partyIndex,
+          }
+          return next(ctx, name, args, replacement)
+        end
+      end
+    end
+    return next(ctx, name, args, cmd)
+  end)
+
   mod.events:on("map.entered", function(event)
     applyGymToActiveMap(event.mapId)
   end)
@@ -909,16 +1082,18 @@ return function(mod)
       -- A prior battle restores the physical gym identity so its reward remains
       -- correct. Reapply the visitor at the next engagement so a rematch after
       -- losing still starts against the shuffled leader.
-      event.npc.def.trainerClass = leaderRecord.assignedLeaderId
-      event.npc.def.trainerParty = leaderRecord.assignedPartyIndex
+      if not isGen2() then
+        setNpcTrainerIdentity(event.npc, leaderRecord.assignedLeaderId,
+          leaderRecord.assignedPartyIndex)
+      end
       pendingGymBattle = leaderRecord
       return
     end
 
     local trainerRecord = event.npc and LIVE_GYM_TRAINERS[event.npc.id]
     if trainerRecord then
-      event.npc.def.trainerClass = trainerRecord.sourceTrainer.trainerClass
-      event.npc.def.trainerParty = trainerRecord.sourceTrainer.trainerParty
+      setNpcTrainerIdentity(event.npc, trainerRecord.sourceTrainer.trainerClass,
+        trainerRecord.sourceTrainer.trainerMember or trainerRecord.sourceTrainer.trainerParty)
       pendingGymTrainerBattle = trainerRecord
     end
   end)

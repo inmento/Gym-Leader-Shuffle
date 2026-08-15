@@ -1,13 +1,13 @@
 {
   "id": "gym_leader_shuffle",
   "name": "Gym Leader Shuffle",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "entry": "main.lua",
   "api": 2,
   "category": "GAMEPLAY",
   "profile": "content",
-  "games": ["gen1"],
+  "games": ["gen1", "gen2"],
   "affects_link": false,
   "permissions": ["engine_internals"],
-  "description": "Shuffles Kanto gym leaders with a spoiler log, scaled teams, optional trainer-gym roster shuffling, and testing tools."
+  "description": "Shuffles Gen 1 and Gold gym leaders with scaled teams, optional gym-trainer and Gold held-item shuffling, spoiler log, and testing tools. Gold support is untested."
 }
