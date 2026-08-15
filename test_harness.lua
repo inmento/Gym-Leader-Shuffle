@@ -89,9 +89,9 @@ local mod = {
   log = { info = function() end, warn = function() end, error = function() end },
 }
 
-local entry = assert(loadfile("/home/ubuntu/gym_leader_shuffle/main.lua"))
+local entry = assert(loadfile("/home/ubuntu/release_100/gym_leader_shuffle/main.lua"))
 entry()(mod)
-assert(#callbacks.options == 10, "expected leader, trainer, spoiler, return, and Gold held-item options")
+assert(#callbacks.options == 9, "expected stable Gen 1 leader, trainer, spoiler, return, and move options")
 
 callbacks.hooks["save.new_game"](function(save) return save end, mod.game.save)
 callbacks.events["map.entered"]({ mapId = "PEWTER_GYM" })

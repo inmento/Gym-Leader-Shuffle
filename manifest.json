@@ -1,7 +1,7 @@
 {
   "id": "gym_leader_shuffle",
   "name": "Gym Leader Shuffle",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "entry": "main.lua",
   "api": 2,
   "category": "GAMEPLAY",
@@ -9,5 +9,6 @@
   "games": ["gen1", "gen2"],
   "affects_link": false,
   "permissions": ["engine_internals"],
-  "description": "Shuffles Gen 1 and Gold gym leaders with scaled teams, optional gym-trainer and Gold held-item shuffling, spoiler log, and testing tools. Gold support is untested."
+  "github": "inmento/Gym-Leader-Shuffle",
+  "description": "Shuffle Gym Leaders across Kanto and Johto while each physical gym keeps its own badge, rewards, progression, and level curve."
 }
