@@ -1,5 +1,7 @@
 # Gym Leader Shuffle
 
+> **AI assisted; not AI created.**
+
 Gym Leader Shuffle creates a persistent per-save derangement of the eight Kanto Gym Leaders in Gen 1, or all sixteen Johto and Kanto leaders in Gold. The visiting leader supplies the overworld sprite and scaled battle team. The physical gym continues to own every badge, TM, reward line, and progression flag. **Gold support was built from the current Gold data/API path but has not yet been tested in a player game.**
 
 | Example | Result |
