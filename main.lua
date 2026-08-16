@@ -1351,29 +1351,53 @@ return function(mod)
     pendingGymTrainerBattle = nil
   end)
 
+  local ACTION_OPTIONS = {
+    gym_teleport = true,
+    return_to_last_point = true,
+    spoiler_log = true,
+  }
+
+  local function resetActionOptions()
+    local game = mod.game
+    local stored = game and game.save and game.save.options and game.save.options.modOptions
+    local active = game and game.mods and game.mods.modOptions
+    stored = stored and stored[mod.id]
+    active = active and active[mod.id]
+    for key in pairs(ACTION_OPTIONS) do
+      if stored then stored[key] = false end
+      if active then active[key] = false end
+    end
+  end
+
   mod.events:on("mod.options_changed", function(event)
     -- ManagerState emits `mod` as this mod's string ID, not as a mod object.
     -- Accept an object too for compatibility with any future event producer.
     local changedModId = type(event.mod) == "table" and event.mod.id or event.mod
     if changedModId ~= mod.id then return end
 
-    -- This is deliberately one-shot: switch it on to warp, then switch it
-    -- off and on again for the next test jump. The options facade is
-    -- read-only, so the mod does not silently change the player's setting.
+    -- These rows are one-shot actions. Clear their persisted and live values
+    -- before running the action so the next click always produces a new event.
     if event.key == "gym_teleport" then
-      if event.value then teleportToNextGym() end
+      if event.value then
+        resetActionOptions()
+        teleportToNextGym()
+      end
       return
     end
 
     if event.key == "return_to_last_point" then
-      if event.value then returnToGymTeleportOrigin() end
+      if event.value then
+        resetActionOptions()
+        returnToGymTeleportOrigin()
+      end
       return
     end
 
-    -- Like the testing teleport, the spoiler log is an option-triggered
-    -- action: turn it on to open, then off and on again to reopen it.
     if event.key == "spoiler_log" then
-      if event.value then openSpoilerLog() end
+      if event.value then
+        resetActionOptions()
+        openSpoilerLog()
+      end
       return
     end
 

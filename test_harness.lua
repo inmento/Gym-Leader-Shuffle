@@ -1,3 +1,6 @@
+package.preload["src.core.GameVersion"] = function()
+  return { get = function() return "red" end }
+end
 package.preload["src.render.SpriteRenderer"] = function()
   return { new = function(def, id) return { def = def, id = id } end }
 end
@@ -54,7 +57,11 @@ local mod = {
   id = "gym_leader_shuffle",
   game = {
     data = { pokemon = {}, text = {}, items = {} },
-    save = { flags = {}, inventory = {}, defeatedTrainers = {} },
+    save = {
+      flags = {}, inventory = {}, defeatedTrainers = {},
+      options = { modOptions = { gym_leader_shuffle = options } },
+    },
+    mods = { modOptions = { gym_leader_shuffle = options } },
     stack = { push = function(_, _) end },
   },
   options = {
@@ -89,7 +96,7 @@ local mod = {
   log = { info = function() end, warn = function() end, error = function() end },
 }
 
-local entry = assert(loadfile("/home/ubuntu/release_100/gym_leader_shuffle/main.lua"))
+local entry = assert(loadfile("main.lua"))
 entry()(mod)
 assert(#callbacks.options == 9, "expected stable Gen 1 leader, trainer, spoiler, return, and move options")
 
@@ -113,11 +120,16 @@ local pageCount = 0
 for _ in openedText:gmatch("\f") do pageCount = pageCount + 1 end
 assert(pageCount == 7, "spoiler log must use eight explicit pages")
 
+options.gym_teleport = true
 callbacks.events["mod.options_changed"]({ mod = "gym_leader_shuffle", key = "gym_teleport", value = true })
+assert(options.gym_teleport == false, "Gym Teleport did not reset itself to OFF")
 assert(warpedTo and warpedTo.mapId == "PEWTER_CITY", "Gym Teleport did not call warpTo for the next gym")
 assert(storage.gym_teleport_origin and storage.gym_teleport_origin.mapId == "PEWTER_POKECENTER", "first Gym Teleport did not save the origin")
+options.gym_teleport = true
 callbacks.events["mod.options_changed"]({ mod = "gym_leader_shuffle", key = "gym_teleport", value = true })
+options.return_to_last_point = true
 callbacks.events["mod.options_changed"]({ mod = "gym_leader_shuffle", key = "return_to_last_point", value = true })
+assert(options.return_to_last_point == false, "Return to Last Point did not reset itself to OFF")
 assert(warpedTo and warpedTo.mapId == "PEWTER_POKECENTER" and warpedTo.x == 4 and warpedTo.y == 3, "Return to Last Point did not restore the recorded origin")
 assert(storage.gym_teleport_origin == nil, "successful return did not clear the saved origin")
 print("gym return, spoiler, action, and trainer harness: valid")

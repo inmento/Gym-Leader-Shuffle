@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 — Testing Action Quality-of-Life
+
+**Gym Teleport**, **Return to Last Point**, and **Open Spoiler Log** now clear their own toggle state immediately after use in the Gen 1 branch. Gym Teleport therefore returns to Off after every attempt, making each next click a fresh teleport request instead of requiring a manual Off/On cycle.
+
+This patch changes only the test-action controls. Leader assignments, scaling, dialogue, rewards, trainer shuffle, and Gold behavior remain unchanged.
+
 ## 1.0.1 — Gen 2 Detection Stability
 
 Gym Leader Shuffle now determines the active game through the engine’s `GameVersion.get()` API before registering generation-specific behavior. This replaces data-shape inference, so the Kanto and Gold branches consistently select the correct option schema, map handling, battle hooks, and testing tools when Red, Blue, Yellow, or Gold is loaded.
