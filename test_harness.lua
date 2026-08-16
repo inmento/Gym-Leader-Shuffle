@@ -24,11 +24,13 @@ local trainerParties, maps, npcs, trainerHeaders = {}, {}, {}, {}
 local statueNames, gymStatues = {}, {}
 for i, gymId in ipairs(gymIds) do
   trainerParties[gymId] = { parties = { [gymId == "OPP_GIOVANNI" and 3 or 1] = {
-    { species = "MON_" .. i, level = 10 + i },
+    { species = "MON_" .. i, level = 10 + i, heldItem="CRYSTAL_LEADER_ITEM_" .. i,
+      gender=(i % 2 == 0 and "F" or "M"), crystal251Form="A" },
   } } }
   local trainerClass = "OPP_GYM_TRAINER_" .. i
   trainerParties[trainerClass] = { parties = { [1] = {
-    { species = "MON_" .. i, level = 5 + i },
+    { species = "MON_" .. i, level = 5 + i, heldItem="CRYSTAL_SUPPORT_ITEM_" .. i,
+      gender=(i % 2 == 0 and "F" or "M"), crystal251Form="B" },
   } } }
   trainerHeaders[mapIds[i]] = {
     [2] = { battle = "BATTLE_" .. i, won = "WON_" .. i, after = "AFTER_" .. i },
@@ -66,6 +68,9 @@ end } }
 
 local mod = {
   id = "gym_leader_shuffle",
+  find = function(_, id)
+    if id == "CRYSTAL_251" then return { exports={ dexSize=251 } } end
+  end,
   game = {
     data = {
       pokemon = {}, items = {},
@@ -173,6 +178,14 @@ callbacks.events["world.trainer_engaged"]({ npc = trainerNpc })
 local party = callbacks.hooks["trainer.party"](function(_, _, base) return base end,
   trainerNpc.def.trainerClass, trainerNpc.def.trainerParty, { { species = "BASE", level = 3 } })
 assert(party[1] and party[1].species ~= "BASE", "gym trainer party did not shuffle")
+assert(party[1].heldItem == "CRYSTAL_SUPPORT_ITEM_" .. sourceIndex
+  and party[1].crystal251Form == "B",
+  "gym trainer scaling discarded Crystal-style imported party fields")
+
+-- Optional Crystal detection must be advisory only and must not alter the
+-- normal map flow or require a separate dependency declaration.
+assert(callbacks.events["game.ready"], "Crystal compatibility startup listener was not registered")
+callbacks.events["game.ready"]({ game=mod.game })
 
 callbacks.events["mod.options_changed"]({ mod = "gym_leader_shuffle", key = "spoiler_log", value = true })
 assert(openedText and openedText:find("1/8", 1, true), "spoiler log omitted the first explicit page")

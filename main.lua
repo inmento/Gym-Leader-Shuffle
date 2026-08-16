@@ -17,6 +17,16 @@ return function(mod)
     return playing == "gold"
   end
 
+  -- Crystal 251 is an optional Gen 1 overhaul. Its early import expands the
+  -- live registries and enriches party records; this helper is deliberately
+  -- advisory so Gym Leader Shuffle remains fully standalone when absent.
+  local function crystal251Active()
+    if isGen2() or type(mod.find) ~= "function" then return false end
+    local ok, handle = pcall(mod.find, mod, "CRYSTAL_251")
+    local exports = ok and type(handle) == "table" and handle.exports or nil
+    return type(exports) == "table" and tonumber(exports.dexSize) == 251
+  end
+
   if isGen2() then
     local GYMS = {
       { id="FALKNER", mapId="VIOLET_GYM", objectIndex=1, scriptKey="56:412f", class=1, member=1, sprite="SPRITE_FALKNER", intro="56:41e0", badge="ZEPHYR BADGE", type="FLYING" },
@@ -608,14 +618,19 @@ return function(mod)
   local LIVE_GYM_NPCS = {}
   local LIVE_GYM_TRAINERS = {}
 
+  local function copyRecord(value)
+    if type(value) ~= "table" then return value end
+    local out = {}
+    for key, child in pairs(value) do out[key] = copyRecord(child) end
+    return out
+  end
+
+  -- Crystal 251 enriches trainer rows with Gen II fields. Preserve every
+  -- imported field in our baseline snapshot, then alter only species, level,
+  -- and an explicitly requested moveset during physical-gym scaling.
   local function copyParty(party)
     local out = {}
-    for i, mon in ipairs(party or {}) do
-      out[i] = {
-        species = mon.species,
-        level = mon.level,
-      }
-    end
+    for i, mon in ipairs(party or {}) do out[i] = copyRecord(mon) end
     return out
   end
 
@@ -831,10 +846,8 @@ return function(mod)
       local targetMon = target[i]
       if sourceMon and targetMon then
         local species = fitSpeciesToLevel(sourceMon.species, targetMon.level)
-        local entry = {
-          species = species,
-          level = targetMon.level,
-        }
+        local entry = copyRecord(sourceMon)
+        entry.species, entry.level = species, targetMon.level
         local moves = randomizedMoves(species, targetMon.level, destinationGym.gymType)
         if moves and #moves > 0 then entry.moves = moves end
         out[#out + 1] = entry
@@ -854,7 +867,8 @@ return function(mod)
       local targetMon = target[i]
       if sourceMon and targetMon then
         local species = fitSpeciesToLevel(sourceMon.species, targetMon.level)
-        local entry = { species = species, level = targetMon.level }
+        local entry = copyRecord(sourceMon)
+        entry.species, entry.level = species, targetMon.level
         local moves = randomizedMoves(species, targetMon.level, destinationGym.gymType)
         if moves and #moves > 0 then entry.moves = moves end
         out[#out + 1] = entry
@@ -1396,6 +1410,14 @@ return function(mod)
 
   mod.events:on("map.entered", function(event)
     applyGymToActiveMap(event.mapId)
+  end)
+
+  mod.events:on("game.ready", function(event)
+    if crystal251Active() then
+      mod.log:info("Gym Leader Shuffle: Crystal 251 detected; preserving imported trainer-party fields")
+    end
+    local game = event and event.game or mod.game
+    if game and game.world and game.world.map then applyGymToActiveMap(game.world.map.id) end
   end)
 
   mod.events:on("world.trainer_engaged", function(event)
