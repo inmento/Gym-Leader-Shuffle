@@ -1,7 +1,7 @@
 # Changelog
 
-## 1.0.3 — Gym Text Quality-of-Life
+## 1.0.4 — Standalone Compatibility Clarification
 
-When **SHUFFLE GYM TRAINERS** is enabled in Gen 1, shuffled battle-able gym NPCs now use their source gym trainer’s challenge, victory, and repeat dialogue alongside that trainer’s team and sprite. The ordinary battle flow, defeated-trainer tracking, physical-gym badge, TM, and progression rules remain unchanged.
+Gym Leader Shuffle is explicitly documented and packaged as a **standalone** mod. It does not depend on a randomizer, Starter Picker, or any other mod.
 
-Gen 1 gym statues now display the visiting shuffled leader’s name while retaining the physical gym’s city and badge. Native spelling and punctuation remain intact. Gold behavior is unchanged because Gold uses its own trainer `seenText` and `winText` dialogue path and does not use the Gen 1 gym-statue table.
+The mod can be used by itself, alongside a supported randomizer, or alongside Starter Picker. Its leader assignments and gym behavior do not require another mod to be installed.
