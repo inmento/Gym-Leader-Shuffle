@@ -11,7 +11,7 @@ Gym Leader Shuffle creates a persistent per-save leader shuffle for the eight Ka
 
 ## Install
 
-Import the `gym_leader_shuffle-1.0.0.zip` release archive through Gen 1 Recomp’s **Import mod .zip** action. The archive extracts directly to a `gym_leader_shuffle/` folder containing `manifest.json` and `main.lua`.
+Import the `gym_leader_shuffle-1.0.1.zip` release archive through Gen 1 Recomp’s **Import mod .zip** action. The archive extracts directly to a `gym_leader_shuffle/` folder containing `manifest.json` and `main.lua`.
 
 ## Features
 
@@ -27,4 +27,4 @@ The Gold spoiler log presents one entry per page as `POSITION/16 VISITING LEADER
 
 ## Compatibility
 
-Gym Leader Shuffle targets Mod API 2 and supports Gen 1 and Gold. Giovanni’s non-gym Gen 1 appearances are excluded; only his Viridian Gym party participates. See [CHANGELOG.md](CHANGELOG.md) for the complete 1.0.0 feature list.
+Gym Leader Shuffle targets Mod API 2 and supports Gen 1 and Gold. It uses the engine’s active GameVersion to select the appropriate generation branch before registering game-specific behavior. Giovanni’s non-gym Gen 1 appearances are excluded; only his Viridian Gym party participates. See [CHANGELOG.md](CHANGELOG.md) for the complete release feature list.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — Gen 2 Detection Stability
+
+Gym Leader Shuffle now determines the active game through the engine’s `GameVersion.get()` API before registering generation-specific behavior. This replaces data-shape inference, so the Kanto and Gold branches consistently select the correct option schema, map handling, battle hooks, and testing tools when Red, Blue, Yellow, or Gold is loaded.
+
+No shuffle, scaling, dialogue, reward, NPC, teleport, or spoiler-log rules were changed in this update.
+
 ## 1.0.0 — Full Release
 
 Gym Leader Shuffle 1.0.0 expands the original Kanto leader shuffle into a complete Gen 1 and Gold gym-randomization experience. Every shuffle is saved per playthrough, allowing a run to remain internally consistent across saves, resets, and revisits.

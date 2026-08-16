@@ -1,5 +1,5 @@
 -- Gym Leader Shuffle
--- Release: 1.0.0
+-- Release: 1.0.1
 -- Gen 1 Recomp mod API 2
 --
 -- This mod assigns one of the eight Kanto gym leaders to each gym when a new
@@ -9,9 +9,12 @@
 local SpriteRenderer = require("src.render.SpriteRenderer")
 
 return function(mod)
-  local function isGen2(game)
-    game = game or mod.game
-    return game and game.data and game.data.gen2Maps ~= nil
+  -- The active game is known before the mod entry loads. Branch on that stable
+  -- engine value instead of guessing from the currently available data tables.
+  local GameVersion = require("src.core.GameVersion")
+  local playing = GameVersion.get()
+  local function isGen2(_)
+    return playing == "gold"
   end
 
   if isGen2() then
