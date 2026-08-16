@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — Gym Text Quality-of-Life
+
+When **SHUFFLE GYM TRAINERS** is enabled in Gen 1, shuffled battle-able gym NPCs now use their source gym trainer’s challenge, victory, and repeat dialogue as well as that trainer’s team and sprite. The normal battle flow, defeated-trainer tracking, physical-gym badge, TM, and progression rules remain unchanged.
+
+Gym statues now display the visiting shuffled leader’s name while retaining the physical gym’s city and badge. The native spelling and punctuation for each game version are preserved. Gold behavior is unchanged.
+
 ## 1.0.2 — Testing Action Quality-of-Life
 
 **Gym Teleport**, **Return to Last Point**, and **Open Spoiler Log** now clear their own toggle state immediately after use in the Gen 1 branch. Gym Teleport therefore returns to Off after every attempt, making each next click a fresh teleport request instead of requiring a manual Off/On cycle.

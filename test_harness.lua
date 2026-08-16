@@ -4,9 +4,12 @@ end
 package.preload["src.render.SpriteRenderer"] = function()
   return { new = function(def, id) return { def = def, id = id } end }
 end
-local openedText
+local openedText, openedDone
 package.preload["src.render.TextBox"] = function()
-  return { new = function(_, text, done) openedText = text; return { done = done } end }
+  return { new = function(_, text, done)
+    openedText, openedDone = text, done
+    return { done = done }
+  end }
 end
 
 local gymIds = {
@@ -17,7 +20,8 @@ local mapIds = {
   "PEWTER_GYM", "CERULEAN_GYM", "VERMILION_GYM", "CELADON_GYM",
   "FUCHSIA_GYM", "SAFFRON_GYM", "CINNABAR_GYM", "VIRIDIAN_GYM",
 }
-local trainerParties, maps, npcs = {}, {}, {}
+local trainerParties, maps, npcs, trainerHeaders = {}, {}, {}, {}
+local statueNames, gymStatues = {}, {}
 for i, gymId in ipairs(gymIds) do
   trainerParties[gymId] = { parties = { [gymId == "OPP_GIOVANNI" and 3 or 1] = {
     { species = "MON_" .. i, level = 10 + i },
@@ -26,6 +30,11 @@ for i, gymId in ipairs(gymIds) do
   trainerParties[trainerClass] = { parties = { [1] = {
     { species = "MON_" .. i, level = 5 + i },
   } } }
+  trainerHeaders[mapIds[i]] = {
+    [2] = { battle = "BATTLE_" .. i, won = "WON_" .. i, after = "AFTER_" .. i },
+  }
+  statueNames[mapIds[i]] = "STATUE LEADER " .. i
+  gymStatues[mapIds[i]] = { city = "CITY " .. i, leader = statueNames[mapIds[i]], badge = "BADGE_" .. i }
   maps[mapIds[i]] = {
     label = mapIds[i],
     objects = {
@@ -39,7 +48,9 @@ for i, gymId in ipairs(gymIds) do
   npcs[mapIds[i] .. ":2"] = { id = mapIds[i] .. ":2", def = {} }
 end
 
-local callbacks, storage = { events = {}, hooks = {} }, {}
+package.preload["data.scripts.gyms"] = function() return gymStatues end
+
+local callbacks, storage = { events = {}, hooks = {}, mapScripts = {} }, {}
 local warpedTo
 local options = {
   randomize_gyms = true, randomize_moves = false, randomize_gym_trainers = true,
@@ -56,7 +67,21 @@ end } }
 local mod = {
   id = "gym_leader_shuffle",
   game = {
-    data = { pokemon = {}, text = {}, items = {} },
+    data = {
+      pokemon = {}, items = {},
+      text = (function()
+        local out = {}
+        for i = 1, #gymIds do
+          out["BATTLE_" .. i] = "SOURCE BATTLE " .. i
+          out["WON_" .. i] = "SOURCE WON " .. i
+          out["AFTER_" .. i] = "SOURCE AFTER " .. i
+        end
+        return out
+      end)(),
+      trainerHeader = function(_, mapId, objectIndex)
+        return trainerHeaders[mapId] and trainerHeaders[mapId][objectIndex]
+      end,
+    },
     save = {
       flags = {}, inventory = {}, defeatedTrainers = {},
       options = { modOptions = { gym_leader_shuffle = options } },
@@ -77,7 +102,13 @@ local mod = {
     },
     moves = { get = function() return nil end },
     sprites = { get = function(_, id) return { id = id } end },
-    map_scripts = { register = function(_, _, _) end },
+    map_scripts = {
+      register = function(_, mapId, contribution)
+        local target = callbacks.mapScripts[mapId] or { talk = {} }
+        callbacks.mapScripts[mapId] = target
+        for key, handler in pairs(contribution.talk or {}) do target.talk[key] = handler end
+      end,
+    },
   },
   save = {
     get = function(_, key) return storage[key] end,
@@ -105,6 +136,38 @@ callbacks.events["map.entered"]({ mapId = "PEWTER_GYM" })
 local trainerNpc = npcs["PEWTER_GYM:2"]
 assert(trainerNpc.def.trainerClass ~= "OPP_GYM_TRAINER_1", "gym trainer class did not shuffle")
 assert(trainerNpc.sprite and trainerNpc.sprite.def.id ~= "SPRITE_TRAINER_1", "gym trainer sprite did not shuffle")
+
+local assignedLeader = storage.gym_mapping.OPP_BROCK
+local leaderIndex
+for i, gymId in ipairs(gymIds) do if gymId == assignedLeader then leaderIndex = i end end
+assert(gymStatues.PEWTER_GYM.leader == statueNames[mapIds[leaderIndex]],
+  "Pewter Gym statue did not show the visiting leader name")
+
+local sourceKey = storage.gym_trainer_mapping["OPP_BROCK:2"]
+local sourceGymId = sourceKey:match("^(OPP_[^:]+):")
+local sourceIndex
+for i, gymId in ipairs(gymIds) do if gymId == sourceGymId then sourceIndex = i end end
+local trainerTalk = callbacks.mapScripts.PEWTER_GYM.talk.TEXT_TRAINER_1
+assert(trainerTalk, "Pewter trainer dialogue override was not registered")
+local engage = {}
+local overworld = {
+  player = {},
+  engageTrainer = function(_, npc, done, wonText, skipBattleText)
+    engage.npc, engage.done, engage.wonText, engage.skipBattleText = npc, done, wonText, skipBattleText
+  end,
+}
+trainerTalk(mod.game, overworld, trainerNpc, function() end)
+assert(openedText == "SOURCE BATTLE " .. sourceIndex,
+  "shuffled gym trainer did not use the source gym challenge dialogue")
+assert(openedDone, "source trainer dialogue did not continue into its battle")
+openedDone()
+assert(engage.wonText == "SOURCE WON " .. sourceIndex and engage.skipBattleText == true,
+  "shuffled gym trainer did not carry the source gym victory dialogue into battle")
+mod.game.save.defeatedTrainers[trainerNpc.id] = true
+trainerTalk(mod.game, overworld, trainerNpc, function() end)
+assert(openedText == "SOURCE AFTER " .. sourceIndex,
+  "shuffled gym trainer did not use the source gym repeat dialogue")
+mod.game.save.defeatedTrainers[trainerNpc.id] = nil
 
 callbacks.events["world.trainer_engaged"]({ npc = trainerNpc })
 local party = callbacks.hooks["trainer.party"](function(_, _, base) return base end,

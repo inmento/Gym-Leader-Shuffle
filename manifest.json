@@ -1,7 +1,7 @@
 {
   "id": "gym_leader_shuffle",
   "name": "Gym Leader Shuffle",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "entry": "main.lua",
   "api": 2,
   "category": "GAMEPLAY",

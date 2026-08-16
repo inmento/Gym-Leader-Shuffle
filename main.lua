@@ -645,6 +645,7 @@ return function(mod)
             trainerClass = object.trainerClass,
             trainerParty = object.trainerParty,
             sprite = object.sprite,
+            text = object.text,
             vanillaParty = copyParty(sourceParty),
           }
           GYM_TRAINERS[#GYM_TRAINERS + 1] = record
@@ -935,6 +936,35 @@ return function(mod)
     OPP_ERIKA = "ERIKA", OPP_KOGA = "KOGA", OPP_SABRINA = "SABRINA",
     OPP_BLAINE = "BLAINE", OPP_GIOVANNI = "GIOVANNI",
   }
+
+  local projectGymStatues
+
+  -- Gym statues are a shared engine interaction that reads the live
+  -- data.scripts.gyms table for the physical map. Preserve each game's native
+  -- spelling/punctuation, then project only the visiting leader name from the
+  -- same saved mapping used by the leader sprite and battle.
+  do
+    local ok, statues = pcall(require, "data.scripts.gyms")
+    if ok and type(statues) == "table" then
+      local baseNames = {}
+      for _, gym in ipairs(GYMS) do
+        baseNames[gym.mapId] = statues[gym.mapId] and statues[gym.mapId].leader
+      end
+      projectGymStatues = function(leaderMapping)
+        for _, physicalGym in ipairs(GYMS) do
+          local statue = statues[physicalGym.mapId]
+          local visitor = leaderMapping and GYM_BY_ID[leaderMapping[physicalGym.id]]
+            or physicalGym
+          if statue then
+            statue.leader = baseNames[visitor.mapId] or LEADER_NAMES[visitor.id]
+          end
+        end
+      end
+    else
+      mod.log:warn("Gym statue labels are unavailable on this engine build")
+    end
+  end
+
   local BADGE_NAMES = {
     OPP_BROCK = "BOULDER BADGE", OPP_MISTY = "CASCADE BADGE",
     OPP_LT_SURGE = "THUNDER BADGE", OPP_ERIKA = "RAINBOW BADGE",
@@ -1167,6 +1197,62 @@ return function(mod)
     end
   end
 
+  -- Ordinary gym trainers normally resolve their battle and victory lines from
+  -- the physical map's trainer header. When their teams are shuffled, compose
+  -- only their talk handler so the trainer uses the source gym's dialogue too.
+  -- The battle still goes through the normal trainer flow, which keeps defeat
+  -- tracking, physical-gym rewards, and all battle timing unchanged.
+  local function shuffledGymTrainerTalk(destinationTrainer)
+    return function(game, overworld, npc, done)
+      done = done or function() end
+      local leaderMapping = mappingForSave()
+      local assignments = trainerMappingForSave(leaderMapping)
+      local sourceKey = assignments and assignments[destinationTrainer.key]
+      local sourceTrainer = sourceKey and GYM_TRAINER_BY_KEY[sourceKey]
+        or destinationTrainer
+      local header = game and game.data and game.data.trainerHeader
+        and game.data:trainerHeader(sourceTrainer.mapId, sourceTrainer.objectIndex)
+      local text = game and game.data and game.data.text or {}
+
+      if npc and npc.facePlayer and overworld and overworld.player then
+        npc:facePlayer(overworld.player)
+      end
+      if game.save.defeatedTrainers and game.save.defeatedTrainers[npc.id] then
+        local after = header and header.after and text[header.after]
+        if after then
+          local TextBox = require("src.render.TextBox")
+          game.stack:push(TextBox.new(game, after, done))
+        else
+          done()
+        end
+        return
+      end
+
+      local battleText = header and header.battle and text[header.battle]
+      local wonText = header and header.won and text[header.won]
+      local function engage()
+        overworld:engageTrainer(npc, done, wonText, battleText ~= nil)
+      end
+      if battleText then
+        local TextBox = require("src.render.TextBox")
+        game.stack:push(TextBox.new(game, battleText, engage))
+      else
+        engage()
+      end
+    end
+  end
+
+  for _, trainer in ipairs(GYM_TRAINERS) do
+    if trainer.text then
+      mod.content.map_scripts:register(trainer.mapId, {
+        priority = 110,
+        talk = {
+          [trainer.text] = shuffledGymTrainerTalk(trainer),
+        },
+      })
+    end
+  end
+
   local function setNpcSprite(npc, spriteId)
     local spriteDef = mod.content.sprites:get(spriteId)
     if not spriteDef then
@@ -1226,6 +1312,8 @@ return function(mod)
   local function applyGymToActiveMap(mapId)
     local gym = GYM_BY_MAP[mapId]
     if not gym then return end
+    local mapping = mappingForSave()
+    if projectGymStatues then projectGymStatues(mapping) end
 
     local handle = mod.world:npc(mapId, gym.objectIndex)
     local npc = handle and handle.npc
@@ -1234,7 +1322,6 @@ return function(mod)
       return
     end
 
-    local mapping = mappingForSave()
     local assignedLeaderId = mapping and mapping[gym.id]
     local assignedGym = assignedLeaderId and GYM_BY_ID[assignedLeaderId]
 
