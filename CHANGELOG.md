@@ -1,9 +1,9 @@
 # Changelog
 
-## 1.0.5 — Optional Crystal 251 Compatibility
+## 1.0.6 — Release metadata and clean package maintenance
 
-Gym Leader Shuffle now detects **Crystal 251** only as an optional compatibility signal; it remains a fully standalone mod with no new dependencies.
+Gym Leader Shuffle now declares its tested **Gen1Recomp API 2** compatibility floor (`>=0.1.99`) in the manifest, allowing the launcher and mod indexes to make a clear compatibility decision before installation. The source banner now correctly identifies the current 1.0.6 release.
 
-When Crystal 251 is active in Red, Blue, or Yellow, gym leader and gym-trainer scaling now clones the full imported party record before adjusting only the species, level, and any explicitly randomized moves. This preserves compatible imported fields such as held items, gender, form data, and other Generation II party metadata instead of reducing a scaled team to species and level alone.
+The distributed ZIP has been rebuilt as a clean player package. It retains the mod, manifest, license, and player documentation while excluding the local regression harnesses and packaging metadata. No gym assignment, trainer scaling, dialogue, reward, teleport, or Crystal 251 behavior has changed.
 
-Gen 1 and Gold regression coverage, package validation, linting, and Gen 2 safety checks passed. This update does not alter badges, rewards, story progression, or the existing Gym Leader Shuffle conflict policy.
+The 1.0.6 source and final install archive pass current Gen1Recomp 0.2.3 validation, linting, Gen 2 compatibility checks, and the saved Gen 1 and Gold regression harnesses.
