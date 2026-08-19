@@ -431,19 +431,19 @@ return function(mod)
     {
       key = "randomize_gyms",
       type = "toggle",
-      label = "SHUFFLE GYM LEADERS",
+      label = "SHUFFLE LEADERS",
       default = true,
     },
     {
       key = "randomize_moves",
       type = "toggle",
-      label = "RANDOMIZE MOVE SETS",
+      label = "SHUFFLE MOVESETS",
       default = false,
     },
     {
       key = "randomize_gym_trainers",
       type = "toggle",
-      label = "SHUFFLE GYM TRAINERS",
+      label = "SHUFFLE TRAINERS",
       default = false,
     },
     {
@@ -455,31 +455,31 @@ return function(mod)
     {
       key = "gym_teleport",
       type = "toggle",
-      label = "GYM TELEPORT (TEST)",
+      label = "GYM WARP (TEST)",
       default = false,
     },
     {
       key = "return_to_last_point",
       type = "toggle",
-      label = "RETURN TO LAST POINT (TEST)",
+      label = "RETURN POINT",
       default = false,
     },
     {
       key = "match_leader_type",
       type = "toggle",
-      label = "PREFER GYM-TYPE MOVES",
+      label = "GYM-TYPE MOVES",
       default = true,
     },
     {
       key = "allow_native_stab",
       type = "toggle",
-      label = "ALLOW NATIVE STAB MOVES",
+      label = "ALLOW STAB MOVES",
       default = true,
     },
     {
       key = "ensure_damaging_move",
       type = "toggle",
-      label = "ENSURE A DAMAGING MOVE",
+      label = "ENSURE DAMAGE",
       default = true,
     },
   })
