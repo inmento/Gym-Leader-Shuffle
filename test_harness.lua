@@ -1,5 +1,8 @@
 package.preload["src.core.GameVersion"] = function()
-  return { get = function() return "red" end }
+  return {
+    get = function() return "red" end,
+    generation = function(id) return (id == "gold" or id == "silver") and 2 or 1 end,
+  }
 end
 package.preload["src.render.SpriteRenderer"] = function()
   return { new = function(def, id) return { def = def, id = id } end }

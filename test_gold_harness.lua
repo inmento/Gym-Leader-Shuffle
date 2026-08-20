@@ -1,7 +1,15 @@
 local callbacks, storage, trainers, maps, npcs = { events = {}, hooks = {} }, {}, {}, {}, {}
+local activeGame = rawget(_G, "GYM_LEADER_SHUFFLE_TEST_GAME") or "gold"
+assert(activeGame == "gold" or activeGame == "silver", "Gen 2 harness requires Gold or Silver")
 
 package.preload["src.core.GameVersion"] = function()
-  return { get = function() return "gold" end }
+  return {
+    get = function() return activeGame end,
+    generation = function(id)
+      assert(id == activeGame, "Gym Leader Shuffle must classify the active Gen 2 version")
+      return 2
+    end,
+  }
 end
 package.preload["src.render.SpriteRenderer"] = function()
   return { new = function(def, id) return { def = def, id = id } end }
@@ -98,4 +106,4 @@ assert(party[1] and party[1].species == "MON_" .. visitor,
   "Gold leader party was not projected from the visitor's source party")
 assert(party[1].level == 11, "Gold leader party was not scaled to the physical gym's level")
 
-print("gold gym shuffle intro-dialogue, NPC-dialogue, sprite, battle, and scaling harness: valid")
+print(activeGame .. " gym shuffle intro-dialogue, NPC-dialogue, sprite, battle, and scaling harness: valid")

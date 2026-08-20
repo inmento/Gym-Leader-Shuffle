@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.9 — Silver support
+
+Gym Leader Shuffle now recognizes **Pokémon Silver** as Generation 2 and runs the same established sixteen-gym Johto/Kanto shuffle path as Gold. Silver receives the Gen 2 leader definitions, gym NPC handling, intro and defeat text projection, held-item behavior, scaling, and gym warp tools instead of incorrectly entering the Gen 1 eight-gym branch.
+
+This is a direct root-cause correction using Gen1Recomp’s shared `GameVersion.generation()` contract rather than a separate Silver gym table. The Gen 1 harness and the full shared sixteen-gym Gold/Silver harness pass.
+
 ## 1.0.8 — Compact option labels
 
 All Gen 1 and Gold option labels now fit the fixed 17-column mod-settings viewport. The setting names were shortened for readability only; gym assignments, trainer scaling, dialogue, teleports, conflict rules, and gameplay behavior are unchanged.
