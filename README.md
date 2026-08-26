@@ -34,3 +34,7 @@ When optional **Crystal 251** is active in Red, Blue, or Yellow, Gym Leader Shuf
 > **Required exception:** Do not enable Gym Leader Shuffle with [Randomized Gym Challenge](https://github.com/inmento/Randomized-Gym-Challenge). Both intentionally rewrite the same Gym leader, trainer-party, script, NPC, and map systems. This is a mutual exclusion only; Gym Leader Shuffle remains compatible with the rest of the user’s non-conflicting mod suite.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete release feature list.
+
+## License
+
+Unless a file or third-party notice says otherwise, this repository's original source code, configuration, tests, and documentation are licensed under the [MIT License](LICENSE). Read [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for attribution guidance and third-party, asset, user-supplied-source, and game-IP boundaries.
